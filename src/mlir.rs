@@ -32,7 +32,7 @@ impl<'c> Mlir<'c> {
                 let block = Block::new(&[]);
                 let v0 = block.append_operation(arith::constant(
                     &self.context,
-                    IntegerAttribute::new(index_type, 21).into(),
+                    IntegerAttribute::new(index_type, func.value).into(),
                     func.location.mlir_location(&self.context),
                 ));
                 let v0 = v0.result(0).unwrap();

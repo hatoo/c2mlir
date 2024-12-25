@@ -22,6 +22,7 @@ fn main() {
     let mut parser = Parser::new(lexer);
 
     let func = parser.parse();
+    dbg!(&func);
 
     let registry = DialectRegistry::new();
     register_all_dialects(&registry);

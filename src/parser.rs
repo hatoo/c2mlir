@@ -2,6 +2,7 @@ use ecow::EcoString;
 
 use crate::lexer::{Lexer, Location, TokenKind};
 
+#[derive(Debug)]
 pub struct FunctionDefinition {
     pub location: Location,
     pub identifier: EcoString,

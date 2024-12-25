@@ -1,5 +1,6 @@
 use ecow::EcoString;
 
+#[derive(Debug, PartialEq)]
 pub struct Location {
     pub filename: EcoString,
     /// 0-indexed
