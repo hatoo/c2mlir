@@ -59,7 +59,7 @@ impl Lexer {
         }
     }
 
-    fn current_location(&self) -> Location {
+    pub fn current_location(&self) -> Location {
         Location {
             filename: self.filename.clone(),
             line: self.current_line,

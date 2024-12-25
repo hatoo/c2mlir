@@ -1,3 +1,11 @@
+use c2mlir::{
+    lexer::{self, Lexer},
+    mlir::Mlir,
+    parser::Parser,
+};
+use clap::Parser as _;
+use std::path::PathBuf;
+
 use attribute::IntegerAttribute;
 use melior::{
     dialect::{arith, func, DialectRegistry},
@@ -11,7 +19,20 @@ use melior::{
     Context,
 };
 
+#[derive(Debug, clap::Parser)]
+struct Opts {
+    filepath: PathBuf,
+}
+
 fn main() {
+    let opts = Opts::parse();
+
+    let source = std::fs::read(&opts.filepath).unwrap();
+    let lexer = Lexer::new(opts.filepath.to_string_lossy().into(), source);
+    let mut parser = Parser::new(lexer);
+
+    let func = parser.parse();
+
     let registry = DialectRegistry::new();
     register_all_dialects(&registry);
 
@@ -19,32 +40,10 @@ fn main() {
     context.append_dialect_registry(&registry);
     context.load_all_available_dialects();
 
-    let location = Location::unknown(&context);
-    let mut module = Module::new(location);
+    let mut mlir = Mlir::new(&context);
+    mlir.add_function(&func);
 
-    let index_type = Type::index(&context);
-
-    module.body().append_operation(func::func(
-        &context,
-        StringAttribute::new(&context, "main"),
-        TypeAttribute::new(FunctionType::new(&context, &[], &[index_type]).into()),
-        {
-            let block = Block::new(&[]);
-            let v0 = block.append_operation(arith::constant(
-                &context,
-                IntegerAttribute::new(index_type, 21).into(),
-                location,
-            ));
-            let v0 = v0.result(0).unwrap();
-
-            block.append_operation(func::r#return(&[v0.into()], location));
-            let region = Region::new();
-            region.append_block(block);
-            region
-        },
-        &[],
-        location,
-    ));
+    let module = &mut mlir.module;
 
     assert!(module.as_operation().verify());
 
@@ -54,7 +53,7 @@ fn main() {
     // pass_manager.add_pass(create_canonicalizer());
     // pass_manager.add_pass(create_cse());
     pass_manager.add_pass(create_to_llvm());
-    pass_manager.run(&mut module).unwrap();
+    pass_manager.run(module).unwrap();
 
     assert!(module.as_operation().verify());
 
