@@ -1,17 +1,15 @@
-use attribute::{DenseElementsAttribute, FlatSymbolRefAttribute, FloatAttribute, IntegerAttribute};
+use attribute::IntegerAttribute;
 use melior::{
-    dialect::{arith, func, DialectHandle, DialectRegistry},
+    dialect::{arith, func, DialectRegistry},
     ir::{
         attribute::{StringAttribute, TypeAttribute},
         r#type::FunctionType,
         *,
     },
     pass::{conversion::create_to_llvm, transform::create_inliner, PassManager},
-    utility::{register_all_dialects, register_all_llvm_translations},
+    utility::register_all_dialects,
     Context,
 };
-use operation::OperationBuilder;
-use r#type::RankedTensorType;
 
 fn main() {
     let registry = DialectRegistry::new();
