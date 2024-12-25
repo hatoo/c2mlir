@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use melior::{
     dialect::DialectRegistry,
+    ir::operation::OperationPrintingFlags,
     pass::{conversion::create_to_llvm, transform::create_inliner, PassManager},
     utility::register_all_dialects,
     Context,
@@ -47,5 +48,11 @@ fn main() {
 
     assert!(module.as_operation().verify());
 
-    println!("{}", module.as_operation());
+    println!(
+        "{}",
+        module
+            .as_operation()
+            .to_string_with_flags(OperationPrintingFlags::default().enable_debug_info(true, false))
+            .unwrap()
+    );
 }
