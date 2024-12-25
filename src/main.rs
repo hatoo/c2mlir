@@ -1,19 +1,9 @@
-use c2mlir::{
-    lexer::{self, Lexer},
-    mlir::Mlir,
-    parser::Parser,
-};
+use c2mlir::{lexer::Lexer, mlir::Mlir, parser::Parser};
 use clap::Parser as _;
 use std::path::PathBuf;
 
-use attribute::IntegerAttribute;
 use melior::{
-    dialect::{arith, func, DialectRegistry},
-    ir::{
-        attribute::{StringAttribute, TypeAttribute},
-        r#type::FunctionType,
-        *,
-    },
+    dialect::DialectRegistry,
     pass::{conversion::create_to_llvm, transform::create_inliner, PassManager},
     utility::register_all_dialects,
     Context,
