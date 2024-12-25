@@ -47,27 +47,16 @@ fn main() {
     ));
 
     assert!(module.as_operation().verify());
-    // dbg!(module.as_operation());
 
     // register_all_passes();
     let pass_manager = PassManager::new(&context);
     pass_manager.add_pass(create_inliner());
     // pass_manager.add_pass(create_canonicalizer());
     // pass_manager.add_pass(create_cse());
-
-    pass_manager.run(&mut module).unwrap();
-
-    assert!(module.as_operation().verify());
-    // println!("After some passes:");
-    // dbg!(module.as_operation());
-
-    let pass_manager = PassManager::new(&context);
     pass_manager.add_pass(create_to_llvm());
     pass_manager.run(&mut module).unwrap();
 
     assert!(module.as_operation().verify());
-    // println!("to llvm:");
-    // dbg!(module.as_operation());
 
     println!("{}", module.as_operation());
 }
