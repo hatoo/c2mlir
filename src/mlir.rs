@@ -3,7 +3,7 @@ use melior::{
     ir::{
         attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
         r#type::FunctionType,
-        Block, Location, Module, OperationRef, Region, Type,
+        Block, Module, OperationRef, Region, Type,
     },
     Context,
 };
@@ -73,11 +73,14 @@ impl AddBlock for JumpStatement {
         block: &'a Block<'c>,
     ) -> OperationRef<'c, 'a> {
         match self {
-            JumpStatement::Return(expression) => {
+            JumpStatement::Return {
+                expression,
+                location,
+            } => {
                 let v0 = expression.add_block(context, block);
                 block.append_operation(func::r#return(
                     &[v0.result(0).unwrap().into()],
-                    Location::unknown(context),
+                    location.mlir_location(context),
                 ))
             }
         }

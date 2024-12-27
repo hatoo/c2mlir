@@ -5,6 +5,7 @@ use ecow::EcoString;
 use crate::lexer::{Lexer, Location, Token, TokenKind};
 
 // ASTs are followed by C Standard but hierarchy may be flattened for simplicity
+// Don't define tuple struct unless the number of fields is 1
 
 // 6.4.4
 
@@ -42,7 +43,10 @@ pub enum BlockItem {
 // 6.8.6
 #[derive(Debug)]
 pub enum JumpStatement {
-    Return(Expression),
+    Return {
+        location: Location,
+        expression: Expression,
+    },
 }
 
 // 6.9
@@ -221,10 +225,13 @@ impl Parse for BlockItem {
 
 impl Parse for JumpStatement {
     fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
-        parser.expect(TokenKind::Return)?;
+        let location = parser.expect(TokenKind::Return)?.location;
         let expression = Expression::parse(parser)?;
         parser.expect(TokenKind::SemiColon)?;
-        Ok(JumpStatement::Return(expression))
+        Ok(JumpStatement::Return {
+            location,
+            expression,
+        })
     }
 }
 
