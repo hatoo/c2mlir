@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use ecow::EcoString;
 
 use crate::lexer::{Lexer, Location, Token, TokenKind};
@@ -76,6 +78,22 @@ impl ParseError {
             line,
             message,
         }
+    }
+}
+
+impl Display for ParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "{}:{}:{}:",
+            self.location.filename, self.location.line, self.location.column,
+        )?;
+        writeln!(f, "{}", self.line)?;
+        // wtf?
+        writeln!(f, "{:1$}^", "", self.location.column)?;
+        writeln!(f, "{}", self.message)?;
+
+        Ok(())
     }
 }
 

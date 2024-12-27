@@ -128,15 +128,22 @@ impl Lexer {
     }
 
     fn skip1(&mut self) {
-        self.index += 1;
-        self.current_column += 1;
+        if let Some(c) = self.current_char() {
+            self.index += 1;
+            if c == b'\n' {
+                self.current_line += 1;
+                self.current_column = 0;
+            } else {
+                self.current_column += 1;
+            }
+        }
     }
 
     fn read_while(&mut self, pred: impl Fn(u8) -> bool) -> &str {
         let start = self.index;
         while let Some(c) = self.current_char() {
             if pred(c) {
-                self.index += 1;
+                self.skip1();
             } else {
                 break;
             }

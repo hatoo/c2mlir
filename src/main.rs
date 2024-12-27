@@ -35,7 +35,13 @@ fn main() {
 
     let mut module = Module::new(Location::unknown(&context));
 
-    let translation_unit = TranslationUnit::parse(&mut parser).unwrap();
+    let translation_unit = match TranslationUnit::parse(&mut parser) {
+        Ok(translation_unit) => translation_unit,
+        Err(parse_error) => {
+            eprintln!("{}", parse_error);
+            std::process::exit(1);
+        }
+    };
     for external_declaration in translation_unit.0 {
         match external_declaration {
             c2mlir::parser::ExternalDeclaration::FunctionDefinition(function_definition) => {
