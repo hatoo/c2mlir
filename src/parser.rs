@@ -86,7 +86,10 @@ impl Display for ParseError {
         writeln!(
             f,
             "{}:{}:{}:",
-            self.location.filename, self.location.line, self.location.column,
+            self.location.filename,
+            // To 1-indexed
+            self.location.line + 1,
+            self.location.column + 1,
         )?;
         writeln!(f, "{}", self.line)?;
         // wtf?
