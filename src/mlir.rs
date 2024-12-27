@@ -10,19 +10,6 @@ use melior::{
 
 use crate::parser::{BlockItem, Expression, FunctionDefinition, JumpStatement, UnlabeledStatement};
 
-pub struct Mlir<'c> {
-    pub context: &'c Context,
-    pub module: melior::ir::Module<'c>,
-}
-
-impl<'c> Mlir<'c> {
-    pub fn new(context: &'c Context) -> Self {
-        let location = melior::ir::Location::unknown(context);
-        let module = melior::ir::Module::new(location);
-        Self { context, module }
-    }
-}
-
 pub trait AddModule {
     fn add_module(&self, context: &Context, module: &Module);
 }

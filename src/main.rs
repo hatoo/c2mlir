@@ -23,7 +23,8 @@ fn main() {
     let opts = Opts::parse();
 
     let source = std::fs::read(&opts.filepath).unwrap();
-    let lexer = Lexer::new(opts.filepath.to_string_lossy().into(), source);
+    let filename = opts.filepath.to_string_lossy().to_string();
+    let lexer = Lexer::new((&filename).into(), source);
     let mut parser = Parser::new(lexer);
 
     let registry = DialectRegistry::new();
@@ -33,7 +34,7 @@ fn main() {
     context.append_dialect_registry(&registry);
     context.load_all_available_dialects();
 
-    let mut module = Module::new(Location::unknown(&context));
+    let mut module = Module::new(Location::new(&context, &filename, 1, 1));
 
     let translation_unit = match TranslationUnit::parse(&mut parser) {
         Ok(translation_unit) => translation_unit,
