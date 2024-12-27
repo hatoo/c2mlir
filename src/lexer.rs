@@ -49,6 +49,13 @@ pub struct Lexer {
     index: usize,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct Position {
+    line: usize,
+    column: usize,
+    index: usize,
+}
+
 impl Lexer {
     pub fn new(filename: EcoString, source: Vec<u8>) -> Self {
         Self {
@@ -60,12 +67,44 @@ impl Lexer {
         }
     }
 
+    pub fn current_position(&self) -> Position {
+        Position {
+            line: self.current_line,
+            column: self.current_column,
+            index: self.index,
+        }
+    }
+
+    pub fn set_position(&mut self, position: Position) {
+        self.current_line = position.line;
+        self.current_column = position.column;
+        self.index = position.index;
+    }
+
     pub fn current_location(&self) -> Location {
         Location {
             filename: self.filename.clone(),
             line: self.current_line,
             column: self.current_column,
         }
+    }
+
+    pub fn current_line(&self) -> &str {
+        let mut line_start = self.index;
+        while line_start > 0 && self.source[line_start - 1] != b'\n' {
+            line_start -= 1;
+        }
+        let mut line_end = self.index;
+        while self
+            .source
+            .get(line_end)
+            .map(|c| *c != b'\n')
+            .unwrap_or(false)
+        {
+            line_end += 1;
+        }
+
+        std::str::from_utf8(&self.source[line_start..line_end]).unwrap()
     }
 
     fn current_char(&self) -> Option<u8> {

@@ -3,12 +3,12 @@ use melior::{
     ir::{
         attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
         r#type::FunctionType,
-        Block, Region, Type,
+        Block, Location, Module, OperationRef, Region, Type,
     },
     Context,
 };
 
-use crate::parser::FunctionDefinition;
+use crate::parser::{BlockItem, Expression, FunctionDefinition, JumpStatement, UnlabeledStatement};
 
 pub struct Mlir<'c> {
     pub context: &'c Context,
@@ -21,32 +21,73 @@ impl<'c> Mlir<'c> {
         let module = melior::ir::Module::new(location);
         Self { context, module }
     }
+}
 
-    pub fn add_function(&mut self, func: &FunctionDefinition) {
-        let index_type = Type::index(&self.context);
-        self.module.body().append_operation(func::func(
-            &self.context,
-            StringAttribute::new(&self.context, func.identifier.as_str()),
-            TypeAttribute::new(FunctionType::new(&self.context, &[], &[index_type]).into()),
+pub trait AddModule {
+    fn add_module(&self, context: &Context, module: &Module);
+}
+
+pub trait AddBlock {
+    fn add_block<'c, 'a>(&self, context: &'c Context, block: &'a Block<'c>)
+        -> OperationRef<'c, 'a>;
+}
+
+impl AddModule for FunctionDefinition {
+    fn add_module(&self, context: &Context, module: &Module) {
+        let index_type = Type::index(context);
+        module.body().append_operation(func::func(
+            context,
+            StringAttribute::new(context, self.identifier.as_str()),
+            TypeAttribute::new(FunctionType::new(context, &[], &[index_type]).into()),
             {
                 let block = Block::new(&[]);
-                let v0 = block.append_operation(arith::constant(
-                    &self.context,
-                    IntegerAttribute::new(index_type, func.value).into(),
-                    func.location.mlir_location(&self.context),
-                ));
-                let v0 = v0.result(0).unwrap();
+                for item in &self.body.block_items {
+                    let BlockItem::UnlabeledStatement(UnlabeledStatement::JumpStatement(
+                        jump_statement,
+                    )) = item;
+                    jump_statement.add_block(context, &block);
+                }
 
-                block.append_operation(func::r#return(
-                    &[v0.into()],
-                    func.location.mlir_location(&self.context),
-                ));
                 let region = Region::new();
                 region.append_block(block);
                 region
             },
             &[],
-            func.location.mlir_location(&self.context),
+            self.location.mlir_location(context),
         ));
+    }
+}
+
+impl AddBlock for Expression {
+    fn add_block<'c, 'a>(
+        &self,
+        context: &'c Context,
+        block: &'a Block<'c>,
+    ) -> OperationRef<'c, 'a> {
+        match self {
+            Expression::Constant(value) => block.append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(Type::index(context), *value).into(),
+                Location::unknown(context),
+            )),
+        }
+    }
+}
+
+impl AddBlock for JumpStatement {
+    fn add_block<'c, 'a>(
+        &self,
+        context: &'c Context,
+        block: &'a Block<'c>,
+    ) -> OperationRef<'c, 'a> {
+        match self {
+            JumpStatement::Return(expression) => {
+                let v0 = expression.add_block(context, block);
+                block.append_operation(func::r#return(
+                    &[v0.result(0).unwrap().into()],
+                    Location::unknown(context),
+                ))
+            }
+        }
     }
 }

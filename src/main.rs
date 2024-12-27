@@ -1,10 +1,14 @@
-use c2mlir::{lexer::Lexer, mlir::Mlir, parser::Parser};
+use c2mlir::{
+    lexer::Lexer,
+    mlir::AddModule,
+    parser::{Parse, Parser, TranslationUnit},
+};
 use clap::Parser as _;
 use std::path::PathBuf;
 
 use melior::{
     dialect::DialectRegistry,
-    ir::operation::OperationPrintingFlags,
+    ir::{operation::OperationPrintingFlags, Location, Module},
     pass::{conversion::create_to_llvm, transform::create_inliner, PassManager},
     utility::register_all_dialects,
     Context,
@@ -22,8 +26,6 @@ fn main() {
     let lexer = Lexer::new(opts.filepath.to_string_lossy().into(), source);
     let mut parser = Parser::new(lexer);
 
-    let func = parser.parse();
-
     let registry = DialectRegistry::new();
     register_all_dialects(&registry);
 
@@ -31,10 +33,16 @@ fn main() {
     context.append_dialect_registry(&registry);
     context.load_all_available_dialects();
 
-    let mut mlir = Mlir::new(&context);
-    mlir.add_function(&func);
+    let mut module = Module::new(Location::unknown(&context));
 
-    let module = &mut mlir.module;
+    let translation_unit = TranslationUnit::parse(&mut parser).unwrap();
+    for external_declaration in translation_unit.0 {
+        match external_declaration {
+            c2mlir::parser::ExternalDeclaration::FunctionDefinition(function_definition) => {
+                function_definition.add_module(&context, &module);
+            }
+        }
+    }
 
     assert!(module.as_operation().verify());
 
@@ -44,7 +52,7 @@ fn main() {
     // pass_manager.add_pass(create_canonicalizer());
     // pass_manager.add_pass(create_cse());
     pass_manager.add_pass(create_to_llvm());
-    pass_manager.run(module).unwrap();
+    pass_manager.run(&mut module).unwrap();
 
     assert!(module.as_operation().verify());
 
