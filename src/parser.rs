@@ -6,22 +6,29 @@ use crate::lexer::{Lexer, Location, Token, TokenKind};
 
 // ASTs are followed by C Standard but hierarchy may be flattened for simplicity
 
+// 6.4.4
+
 #[derive(Debug)]
-pub struct FunctionDefinition {
-    pub location: Location,
-    pub identifier: EcoString,
-    pub body: CompoundStatement,
+pub enum Constant {
+    Integer(i64),
 }
 
 // 6.5
 
 #[derive(Debug)]
 pub enum Expression {
-    Constant(i64),
+    // primary-expression
+    Constant { value: Constant, location: Location },
 }
 
 // 6.8
 
+#[derive(Debug)]
+pub enum UnlabeledStatement {
+    JumpStatement(JumpStatement),
+}
+
+// 6.8.2
 #[derive(Debug)]
 pub struct CompoundStatement {
     pub block_items: Vec<BlockItem>,
@@ -32,11 +39,7 @@ pub enum BlockItem {
     UnlabeledStatement(UnlabeledStatement),
 }
 
-#[derive(Debug)]
-pub enum UnlabeledStatement {
-    JumpStatement(JumpStatement),
-}
-
+// 6.8.6
 #[derive(Debug)]
 pub enum JumpStatement {
     Return(Expression),
@@ -50,6 +53,15 @@ pub struct TranslationUnit(pub Vec<ExternalDeclaration>);
 #[derive(Debug)]
 pub enum ExternalDeclaration {
     FunctionDefinition(FunctionDefinition),
+}
+
+// 6.9.1
+
+#[derive(Debug)]
+pub struct FunctionDefinition {
+    pub location: Location,
+    pub identifier: EcoString,
+    pub body: CompoundStatement,
 }
 
 pub struct Parser {
@@ -127,10 +139,10 @@ impl Parser {
         }
     }
 
-    pub fn expect_integer(&mut self) -> Result<i64, ParseError> {
+    pub fn expect_integer(&mut self) -> Result<(Location, i64), ParseError> {
         match self.lexer.next() {
             Some(token) => match token.kind {
-                TokenKind::Integer(value) => Ok(value),
+                TokenKind::Integer(value) => Ok((token.location, value)),
                 _ => Err(self.error(format!("expected integer, found {:?}", token.kind))),
             },
             None => Err(self.error("expected integer, found EOF".to_string())),
@@ -176,8 +188,34 @@ impl Parser {
 
 impl Parse for Expression {
     fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
-        let value = parser.expect_integer()?;
-        Ok(Expression::Constant(value))
+        let (location, value) = parser.expect_integer()?;
+        Ok(Expression::Constant {
+            value: Constant::Integer(value),
+            location,
+        })
+    }
+}
+
+impl Parse for UnlabeledStatement {
+    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
+        let jump_statement = JumpStatement::parse(parser)?;
+        Ok(UnlabeledStatement::JumpStatement(jump_statement))
+    }
+}
+
+impl Parse for CompoundStatement {
+    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
+        parser.expect(TokenKind::LBrace)?;
+        let block_items = parser.many1()?;
+        parser.expect(TokenKind::RBrace)?;
+        Ok(CompoundStatement { block_items })
+    }
+}
+
+impl Parse for BlockItem {
+    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
+        let unlabeled_statement = UnlabeledStatement::parse(parser)?;
+        Ok(BlockItem::UnlabeledStatement(unlabeled_statement))
     }
 }
 
@@ -190,26 +228,18 @@ impl Parse for JumpStatement {
     }
 }
 
-impl Parse for UnlabeledStatement {
+impl Parse for TranslationUnit {
     fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
-        let jump_statement = JumpStatement::parse(parser)?;
-        Ok(UnlabeledStatement::JumpStatement(jump_statement))
+        let external_declarations = parser.many1()?;
+        parser.expect_eof()?;
+        Ok(TranslationUnit(external_declarations))
     }
 }
 
-impl Parse for BlockItem {
+impl Parse for ExternalDeclaration {
     fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
-        let unlabeled_statement = UnlabeledStatement::parse(parser)?;
-        Ok(BlockItem::UnlabeledStatement(unlabeled_statement))
-    }
-}
-
-impl Parse for CompoundStatement {
-    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
-        parser.expect(TokenKind::LBrace)?;
-        let block_items = parser.many1()?;
-        parser.expect(TokenKind::RBrace)?;
-        Ok(CompoundStatement { block_items })
+        let function_definition = FunctionDefinition::parse(parser)?;
+        Ok(ExternalDeclaration::FunctionDefinition(function_definition))
     }
 }
 
@@ -226,20 +256,5 @@ impl Parse for FunctionDefinition {
             identifier,
             body,
         })
-    }
-}
-
-impl Parse for ExternalDeclaration {
-    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
-        let function_definition = FunctionDefinition::parse(parser)?;
-        Ok(ExternalDeclaration::FunctionDefinition(function_definition))
-    }
-}
-
-impl Parse for TranslationUnit {
-    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
-        let external_declarations = parser.many1()?;
-        parser.expect_eof()?;
-        Ok(TranslationUnit(external_declarations))
     }
 }

@@ -8,7 +8,9 @@ use melior::{
     Context,
 };
 
-use crate::parser::{BlockItem, Expression, FunctionDefinition, JumpStatement, UnlabeledStatement};
+use crate::parser::{
+    BlockItem, Constant, Expression, FunctionDefinition, JumpStatement, UnlabeledStatement,
+};
 
 pub trait AddModule {
     fn add_module(&self, context: &Context, module: &Module);
@@ -52,10 +54,13 @@ impl AddBlock for Expression {
         block: &'a Block<'c>,
     ) -> OperationRef<'c, 'a> {
         match self {
-            Expression::Constant(value) => block.append_operation(arith::constant(
+            Expression::Constant {
+                value: Constant::Integer(value),
+                location,
+            } => block.append_operation(arith::constant(
                 context,
                 IntegerAttribute::new(Type::index(context), *value).into(),
-                Location::unknown(context),
+                location.mlir_location(context),
             )),
         }
     }
