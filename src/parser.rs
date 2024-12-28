@@ -197,25 +197,24 @@ impl Parser {
         Self { lexer }
     }
 
-    fn error(&self, message: String) -> ParseError {
-        // FIXME currently it points to the next token
-        ParseError::new(
-            self.lexer.current_location(),
-            self.lexer.current_line().to_string(),
-            message,
-        )
-    }
-
     pub fn expect(&mut self, token_kind: TokenKind) -> Result<Token, ParseError> {
         match self.lexer.next() {
             Some(token) => {
                 if token.kind == token_kind {
                     Ok(token)
                 } else {
-                    Err(self.error(format!("expected {:?}, found {:?}", token_kind, token.kind)))
+                    Err(ParseError::new(
+                        token.location,
+                        self.lexer.current_line().to_string(),
+                        format!("expected {:?}, found {:?}", token_kind, token.kind),
+                    ))
                 }
             }
-            None => Err(self.error(format!("expected {:?}, found EOF", token_kind))),
+            None => Err(ParseError::new(
+                self.lexer.current_location(),
+                self.lexer.current_line().to_string(),
+                format!("expected {:?}, found EOF", token_kind),
+            )),
         }
     }
 
@@ -223,9 +222,17 @@ impl Parser {
         match self.lexer.next() {
             Some(token) => match token.kind {
                 TokenKind::Integer(value) => Ok((token.location, value)),
-                _ => Err(self.error(format!("expected integer, found {:?}", token.kind))),
+                _ => Err(ParseError::new(
+                    token.location,
+                    self.lexer.current_line().to_string(),
+                    format!("expected integer, found {:?}", token.kind),
+                )),
             },
-            None => Err(self.error("expected integer, found EOF".to_string())),
+            None => Err(ParseError::new(
+                self.lexer.current_location(),
+                self.lexer.current_line().to_string(),
+                "expected integer, found EOF".to_string(),
+            )),
         }
     }
 
@@ -233,15 +240,27 @@ impl Parser {
         match self.lexer.next() {
             Some(token) => match token.kind {
                 TokenKind::Identifier(identifier) => Ok(identifier),
-                _ => Err(self.error(format!("expected identifier, found {:?}", token.kind))),
+                _ => Err(ParseError::new(
+                    token.location,
+                    self.lexer.current_line().to_string(),
+                    format!("expected identifier, found {:?}", token.kind),
+                )),
             },
-            None => Err(self.error("expected identifier, found EOF".to_string())),
+            None => Err(ParseError::new(
+                self.lexer.current_location(),
+                self.lexer.current_line().to_string(),
+                "expected identifier, found EOF".to_string(),
+            )),
         }
     }
 
     pub fn expect_eof(&mut self) -> Result<(), ParseError> {
         match self.lexer.next() {
-            Some(token) => Err(self.error(format!("expected EOF, found {:?}", token.kind))),
+            Some(token) => Err(ParseError::new(
+                token.location,
+                self.lexer.current_line().to_string(),
+                format!("expected EOF, found {:?}", token.kind),
+            )),
             None => Ok(()),
         }
     }
