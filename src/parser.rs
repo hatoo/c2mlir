@@ -22,11 +22,28 @@ pub enum Expression {
     Constant { value: Constant, location: Location },
 }
 
+impl Parse for Expression {
+    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
+        let (location, value) = parser.expect_integer()?;
+        Ok(Expression::Constant {
+            value: Constant::Integer(value),
+            location,
+        })
+    }
+}
+
 // 6.8
 
 #[derive(Debug)]
 pub enum UnlabeledStatement {
     JumpStatement(JumpStatement),
+}
+
+impl Parse for UnlabeledStatement {
+    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
+        let jump_statement = JumpStatement::parse(parser)?;
+        Ok(UnlabeledStatement::JumpStatement(jump_statement))
+    }
 }
 
 // 6.8.2
@@ -35,9 +52,25 @@ pub struct CompoundStatement {
     pub block_items: Vec<BlockItem>,
 }
 
+impl Parse for CompoundStatement {
+    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
+        parser.expect(TokenKind::LBrace)?;
+        let block_items = parser.many1()?;
+        parser.expect(TokenKind::RBrace)?;
+        Ok(CompoundStatement { block_items })
+    }
+}
+
 #[derive(Debug)]
 pub enum BlockItem {
     UnlabeledStatement(UnlabeledStatement),
+}
+
+impl Parse for BlockItem {
+    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
+        let unlabeled_statement = UnlabeledStatement::parse(parser)?;
+        Ok(BlockItem::UnlabeledStatement(unlabeled_statement))
+    }
 }
 
 // 6.8.6
@@ -49,14 +82,41 @@ pub enum JumpStatement {
     },
 }
 
+impl Parse for JumpStatement {
+    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
+        let location = parser.expect(TokenKind::Return)?.location;
+        let expression = Expression::parse(parser)?;
+        parser.expect(TokenKind::SemiColon)?;
+        Ok(JumpStatement::Return {
+            location,
+            expression,
+        })
+    }
+}
+
 // 6.9
 
 #[derive(Debug)]
 pub struct TranslationUnit(pub Vec<ExternalDeclaration>);
 
+impl Parse for TranslationUnit {
+    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
+        let external_declarations = parser.many1()?;
+        parser.expect_eof()?;
+        Ok(TranslationUnit(external_declarations))
+    }
+}
+
 #[derive(Debug)]
 pub enum ExternalDeclaration {
     FunctionDefinition(FunctionDefinition),
+}
+
+impl Parse for ExternalDeclaration {
+    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
+        let function_definition = FunctionDefinition::parse(parser)?;
+        Ok(ExternalDeclaration::FunctionDefinition(function_definition))
+    }
 }
 
 // 6.9.1
@@ -66,6 +126,22 @@ pub struct FunctionDefinition {
     pub location: Location,
     pub identifier: EcoString,
     pub body: CompoundStatement,
+}
+
+impl Parse for FunctionDefinition {
+    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
+        let int = parser.expect(TokenKind::Int)?;
+        let identifier = parser.expect_identifier()?;
+        parser.expect(TokenKind::LParen)?;
+        parser.expect(TokenKind::RParen)?;
+        let body = CompoundStatement::parse(parser)?;
+
+        Ok(FunctionDefinition {
+            location: int.location,
+            identifier,
+            body,
+        })
+    }
 }
 
 pub struct Parser {
@@ -187,81 +263,5 @@ impl Parser {
             }
         } {}
         Ok(items)
-    }
-}
-
-impl Parse for Expression {
-    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
-        let (location, value) = parser.expect_integer()?;
-        Ok(Expression::Constant {
-            value: Constant::Integer(value),
-            location,
-        })
-    }
-}
-
-impl Parse for UnlabeledStatement {
-    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
-        let jump_statement = JumpStatement::parse(parser)?;
-        Ok(UnlabeledStatement::JumpStatement(jump_statement))
-    }
-}
-
-impl Parse for CompoundStatement {
-    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
-        parser.expect(TokenKind::LBrace)?;
-        let block_items = parser.many1()?;
-        parser.expect(TokenKind::RBrace)?;
-        Ok(CompoundStatement { block_items })
-    }
-}
-
-impl Parse for BlockItem {
-    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
-        let unlabeled_statement = UnlabeledStatement::parse(parser)?;
-        Ok(BlockItem::UnlabeledStatement(unlabeled_statement))
-    }
-}
-
-impl Parse for JumpStatement {
-    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
-        let location = parser.expect(TokenKind::Return)?.location;
-        let expression = Expression::parse(parser)?;
-        parser.expect(TokenKind::SemiColon)?;
-        Ok(JumpStatement::Return {
-            location,
-            expression,
-        })
-    }
-}
-
-impl Parse for TranslationUnit {
-    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
-        let external_declarations = parser.many1()?;
-        parser.expect_eof()?;
-        Ok(TranslationUnit(external_declarations))
-    }
-}
-
-impl Parse for ExternalDeclaration {
-    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
-        let function_definition = FunctionDefinition::parse(parser)?;
-        Ok(ExternalDeclaration::FunctionDefinition(function_definition))
-    }
-}
-
-impl Parse for FunctionDefinition {
-    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
-        let int = parser.expect(TokenKind::Int)?;
-        let identifier = parser.expect_identifier()?;
-        parser.expect(TokenKind::LParen)?;
-        parser.expect(TokenKind::RParen)?;
-        let body = CompoundStatement::parse(parser)?;
-
-        Ok(FunctionDefinition {
-            location: int.location,
-            identifier,
-            body,
-        })
     }
 }
