@@ -1,8 +1,10 @@
 use std::fmt::Display;
 
 use ecow::EcoString;
+use expression::Expression;
 
 use crate::lexer::{Lexer, Location, Token, TokenKind};
+pub mod expression;
 
 // ASTs are followed by C Standard but hierarchy may be flattened for simplicity
 // Don't define tuple struct unless the number of fields is 1
@@ -12,141 +14,6 @@ use crate::lexer::{Lexer, Location, Token, TokenKind};
 #[derive(Debug)]
 pub enum Constant {
     Integer(i64),
-}
-
-// 6.5
-
-#[derive(Debug)]
-pub enum Expression {
-    AdditiveExpression(Box<AdditiveExpression>),
-}
-
-impl Parse for Expression {
-    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
-        let additive_expression = AdditiveExpression::parse(parser)?;
-        Ok(Expression::AdditiveExpression(Box::new(
-            additive_expression,
-        )))
-    }
-}
-
-#[derive(Debug)]
-pub enum PrimaryExpression {
-    Constant { value: Constant, location: Location },
-}
-
-impl Parse for PrimaryExpression {
-    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
-        let (location, value) = parser.expect_integer()?;
-        Ok(PrimaryExpression::Constant {
-            value: Constant::Integer(value),
-            location,
-        })
-    }
-}
-
-#[derive(Debug)]
-pub enum MultiplicativeExpression {
-    // TODO
-    PrimaryExpression(PrimaryExpression),
-    Mul {
-        lhs: Box<MultiplicativeExpression>,
-        // TODO cast
-        rhs: Box<PrimaryExpression>,
-        location: Location,
-    },
-    Div {
-        lhs: Box<MultiplicativeExpression>,
-        rhs: Box<PrimaryExpression>,
-        location: Location,
-    },
-    Rem {
-        lhs: Box<MultiplicativeExpression>,
-        rhs: Box<PrimaryExpression>,
-        location: Location,
-    },
-}
-
-impl Parse for MultiplicativeExpression {
-    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
-        let primary_expression = PrimaryExpression::parse(parser)?;
-        let mut lhs = MultiplicativeExpression::PrimaryExpression(primary_expression);
-        while {
-            if let Ok(t) = parser.expect(TokenKind::Asterisk) {
-                let rhs = PrimaryExpression::parse(parser)?;
-                lhs = MultiplicativeExpression::Mul {
-                    lhs: Box::new(lhs),
-                    rhs: Box::new(rhs),
-                    location: t.location,
-                };
-                true
-            } else if let Ok(t) = parser.expect(TokenKind::Slash) {
-                let rhs = PrimaryExpression::parse(parser)?;
-                lhs = MultiplicativeExpression::Div {
-                    lhs: Box::new(lhs),
-                    rhs: Box::new(rhs),
-                    location: t.location,
-                };
-                true
-            } else if let Ok(t) = parser.expect(TokenKind::Percent) {
-                let rhs = PrimaryExpression::parse(parser)?;
-                lhs = MultiplicativeExpression::Rem {
-                    lhs: Box::new(lhs),
-                    rhs: Box::new(rhs),
-                    location: t.location,
-                };
-                true
-            } else {
-                false
-            }
-        } {}
-        Ok(lhs)
-    }
-}
-
-#[derive(Debug)]
-pub enum AdditiveExpression {
-    // TODO
-    PrimaryExpression(MultiplicativeExpression),
-    Add {
-        lhs: Box<AdditiveExpression>,
-        rhs: Box<MultiplicativeExpression>,
-        location: Location,
-    },
-    Minus {
-        lhs: Box<AdditiveExpression>,
-        rhs: Box<MultiplicativeExpression>,
-        location: Location,
-    },
-}
-
-impl Parse for AdditiveExpression {
-    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
-        let multiplicative_expression = MultiplicativeExpression::parse(parser)?;
-        let mut lhs = AdditiveExpression::PrimaryExpression(multiplicative_expression);
-        while {
-            if let Ok(t) = parser.expect(TokenKind::Plus) {
-                let rhs = MultiplicativeExpression::parse(parser)?;
-                lhs = AdditiveExpression::Add {
-                    lhs: Box::new(lhs),
-                    rhs: Box::new(rhs),
-                    location: t.location,
-                };
-                true
-            } else if let Ok(t) = parser.expect(TokenKind::Minus) {
-                let rhs = MultiplicativeExpression::parse(parser)?;
-                lhs = AdditiveExpression::Minus {
-                    lhs: Box::new(lhs),
-                    rhs: Box::new(rhs),
-                    location: t.location,
-                };
-                true
-            } else {
-                false
-            }
-        } {}
-        Ok(lhs)
-    }
 }
 
 // 6.8
