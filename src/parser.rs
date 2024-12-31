@@ -46,28 +46,74 @@ impl Parse for PrimaryExpression {
 }
 
 #[derive(Debug)]
-pub enum AdditiveExpression {
+pub enum MultiplicativeExpression {
     // TODO
     PrimaryExpression(PrimaryExpression),
+    Mul {
+        lhs: Box<MultiplicativeExpression>,
+        // TODO cast
+        rhs: Box<PrimaryExpression>,
+        location: Location,
+    },
+    Div {
+        lhs: Box<MultiplicativeExpression>,
+        rhs: Box<PrimaryExpression>,
+        location: Location,
+    },
+}
+
+impl Parse for MultiplicativeExpression {
+    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
+        let primary_expression = PrimaryExpression::parse(parser)?;
+        let mut lhs = MultiplicativeExpression::PrimaryExpression(primary_expression);
+        while {
+            if let Ok(t) = parser.expect(TokenKind::Asterisk) {
+                let rhs = PrimaryExpression::parse(parser)?;
+                lhs = MultiplicativeExpression::Mul {
+                    lhs: Box::new(lhs),
+                    rhs: Box::new(rhs),
+                    location: t.location,
+                };
+                true
+            } else if let Ok(t) = parser.expect(TokenKind::Slash) {
+                let rhs = PrimaryExpression::parse(parser)?;
+                lhs = MultiplicativeExpression::Div {
+                    lhs: Box::new(lhs),
+                    rhs: Box::new(rhs),
+                    location: t.location,
+                };
+                true
+            } else {
+                false
+            }
+        } {}
+        Ok(lhs)
+    }
+}
+
+#[derive(Debug)]
+pub enum AdditiveExpression {
+    // TODO
+    PrimaryExpression(MultiplicativeExpression),
     Add {
         lhs: Box<AdditiveExpression>,
-        rhs: Box<PrimaryExpression>,
+        rhs: Box<MultiplicativeExpression>,
         location: Location,
     },
     Minus {
         lhs: Box<AdditiveExpression>,
-        rhs: Box<PrimaryExpression>,
+        rhs: Box<MultiplicativeExpression>,
         location: Location,
     },
 }
 
 impl Parse for AdditiveExpression {
     fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
-        let primary_expression = PrimaryExpression::parse(parser)?;
-        let mut lhs = AdditiveExpression::PrimaryExpression(primary_expression);
+        let multiplicative_expression = MultiplicativeExpression::parse(parser)?;
+        let mut lhs = AdditiveExpression::PrimaryExpression(multiplicative_expression);
         while {
             if let Ok(t) = parser.expect(TokenKind::Plus) {
-                let rhs = PrimaryExpression::parse(parser)?;
+                let rhs = MultiplicativeExpression::parse(parser)?;
                 lhs = AdditiveExpression::Add {
                     lhs: Box::new(lhs),
                     rhs: Box::new(rhs),
@@ -75,7 +121,7 @@ impl Parse for AdditiveExpression {
                 };
                 true
             } else if let Ok(t) = parser.expect(TokenKind::Minus) {
-                let rhs = PrimaryExpression::parse(parser)?;
+                let rhs = MultiplicativeExpression::parse(parser)?;
                 lhs = AdditiveExpression::Minus {
                     lhs: Box::new(lhs),
                     rhs: Box::new(rhs),

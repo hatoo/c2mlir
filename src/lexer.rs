@@ -31,8 +31,10 @@ pub enum TokenKind {
     RParen,
     LBrace,
     RBrace,
+    Asterisk,
     Plus,
     Minus,
+    Slash,
     SemiColon,
     // Error
     Unknown(u8),
@@ -207,6 +209,13 @@ impl Iterator for Lexer {
                     kind: TokenKind::RBrace,
                 })
             }
+            b'*' => {
+                self.skip1();
+                Some(Token {
+                    location,
+                    kind: TokenKind::Asterisk,
+                })
+            }
             b'+' => {
                 self.skip1();
                 Some(Token {
@@ -219,6 +228,13 @@ impl Iterator for Lexer {
                 Some(Token {
                     location,
                     kind: TokenKind::Minus,
+                })
+            }
+            b'/' => {
+                self.skip1();
+                Some(Token {
+                    location,
+                    kind: TokenKind::Slash,
                 })
             }
             b';' => {

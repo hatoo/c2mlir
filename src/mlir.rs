@@ -10,7 +10,7 @@ use melior::{
 
 use crate::parser::{
     AdditiveExpression, BlockItem, Constant, Expression, FunctionDefinition, JumpStatement,
-    PrimaryExpression, UnlabeledStatement,
+    MultiplicativeExpression, PrimaryExpression, UnlabeledStatement,
 };
 
 pub trait AddModule {
@@ -77,6 +77,38 @@ impl AddBlock for PrimaryExpression {
                 IntegerAttribute::new(Type::index(context), *value).into(),
                 location.mlir_location(context),
             )),
+        }
+    }
+}
+
+impl AddBlock for MultiplicativeExpression {
+    fn add_block<'c, 'a>(
+        &self,
+        context: &'c Context,
+        block: &'a Block<'c>,
+    ) -> OperationRef<'c, 'a> {
+        match self {
+            MultiplicativeExpression::PrimaryExpression(primary_expression) => {
+                primary_expression.add_block(context, block)
+            }
+            MultiplicativeExpression::Mul { lhs, rhs, location } => {
+                let v0 = lhs.add_block(context, block);
+                let v1 = rhs.add_block(context, block);
+                block.append_operation(arith::muli(
+                    v0.result(0).unwrap().into(),
+                    v1.result(0).unwrap().into(),
+                    location.mlir_location(context),
+                ))
+            }
+            MultiplicativeExpression::Div { lhs, rhs, location } => {
+                let v0 = lhs.add_block(context, block);
+                let v1 = rhs.add_block(context, block);
+                block.append_operation(arith::divsi(
+                    v0.result(0).unwrap().into(),
+                    v1.result(0).unwrap().into(),
+                    location.mlir_location(context),
+                ))
+            }
         }
     }
 }
