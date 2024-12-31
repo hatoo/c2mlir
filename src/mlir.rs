@@ -3,7 +3,7 @@ use melior::{
     ir::{
         attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
         r#type::FunctionType,
-        Block, Location, Module, OperationRef, Region, Type,
+        Block, Module, OperationRef, Region, Type,
     },
     Context,
 };
@@ -91,13 +91,22 @@ impl AddBlock for AdditiveExpression {
             AdditiveExpression::PrimaryExpression(primary_expression) => {
                 primary_expression.add_block(context, block)
             }
-            AdditiveExpression::Add { lhs, rhs } => {
+            AdditiveExpression::Add { lhs, rhs, location } => {
                 let v0 = lhs.add_block(context, block);
                 let v1 = rhs.add_block(context, block);
                 block.append_operation(arith::addi(
                     v0.result(0).unwrap().into(),
                     v1.result(0).unwrap().into(),
-                    Location::unknown(context),
+                    location.mlir_location(context),
+                ))
+            }
+            AdditiveExpression::Minus { lhs, rhs, location } => {
+                let v0 = lhs.add_block(context, block);
+                let v1 = rhs.add_block(context, block);
+                block.append_operation(arith::subi(
+                    v0.result(0).unwrap().into(),
+                    v1.result(0).unwrap().into(),
+                    location.mlir_location(context),
                 ))
             }
         }

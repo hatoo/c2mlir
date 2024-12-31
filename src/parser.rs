@@ -52,6 +52,12 @@ pub enum AdditiveExpression {
     Add {
         lhs: Box<AdditiveExpression>,
         rhs: Box<PrimaryExpression>,
+        location: Location,
+    },
+    Minus {
+        lhs: Box<AdditiveExpression>,
+        rhs: Box<PrimaryExpression>,
+        location: Location,
     },
 }
 
@@ -60,20 +66,24 @@ impl Parse for AdditiveExpression {
         let primary_expression = PrimaryExpression::parse(parser)?;
         let mut lhs = AdditiveExpression::PrimaryExpression(primary_expression);
         while {
-            let pos = parser.lexer.current_position();
-            match parser.expect(TokenKind::Plus) {
-                Ok(_) => {
-                    let rhs = PrimaryExpression::parse(parser)?;
-                    lhs = AdditiveExpression::Add {
-                        lhs: Box::new(lhs),
-                        rhs: Box::new(rhs),
-                    };
-                    true
-                }
-                Err(_) => {
-                    parser.lexer.set_position(pos);
-                    false
-                }
+            if let Ok(t) = parser.expect(TokenKind::Plus) {
+                let rhs = PrimaryExpression::parse(parser)?;
+                lhs = AdditiveExpression::Add {
+                    lhs: Box::new(lhs),
+                    rhs: Box::new(rhs),
+                    location: t.location,
+                };
+                true
+            } else if let Ok(t) = parser.expect(TokenKind::Minus) {
+                let rhs = PrimaryExpression::parse(parser)?;
+                lhs = AdditiveExpression::Minus {
+                    lhs: Box::new(lhs),
+                    rhs: Box::new(rhs),
+                    location: t.location,
+                };
+                true
+            } else {
+                false
             }
         } {}
         Ok(lhs)
@@ -246,11 +256,13 @@ impl Parser {
     }
 
     pub fn expect(&mut self, token_kind: TokenKind) -> Result<Token, ParseError> {
+        let pos = self.lexer.current_position();
         match self.lexer.next() {
             Some(token) => {
                 if token.kind == token_kind {
                     Ok(token)
                 } else {
+                    self.lexer.set_position(pos);
                     Err(ParseError::new(
                         token.location,
                         self.lexer.current_line().to_string(),
@@ -267,14 +279,18 @@ impl Parser {
     }
 
     pub fn expect_integer(&mut self) -> Result<(Location, i64), ParseError> {
+        let pos = self.lexer.current_position();
         match self.lexer.next() {
             Some(token) => match token.kind {
                 TokenKind::Integer(value) => Ok((token.location, value)),
-                _ => Err(ParseError::new(
-                    token.location,
-                    self.lexer.current_line().to_string(),
-                    format!("expected integer, found {:?}", token.kind),
-                )),
+                _ => {
+                    self.lexer.set_position(pos);
+                    Err(ParseError::new(
+                        token.location,
+                        self.lexer.current_line().to_string(),
+                        format!("expected integer, found {:?}", token.kind),
+                    ))
+                }
             },
             None => Err(ParseError::new(
                 self.lexer.current_location(),
@@ -285,14 +301,18 @@ impl Parser {
     }
 
     pub fn expect_identifier(&mut self) -> Result<EcoString, ParseError> {
+        let pos = self.lexer.current_position();
         match self.lexer.next() {
             Some(token) => match token.kind {
                 TokenKind::Identifier(identifier) => Ok(identifier),
-                _ => Err(ParseError::new(
-                    token.location,
-                    self.lexer.current_line().to_string(),
-                    format!("expected identifier, found {:?}", token.kind),
-                )),
+                _ => {
+                    self.lexer.set_position(pos);
+                    Err(ParseError::new(
+                        token.location,
+                        self.lexer.current_line().to_string(),
+                        format!("expected identifier, found {:?}", token.kind),
+                    ))
+                }
             },
             None => Err(ParseError::new(
                 self.lexer.current_location(),

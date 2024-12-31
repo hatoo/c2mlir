@@ -32,6 +32,7 @@ pub enum TokenKind {
     LBrace,
     RBrace,
     Plus,
+    Minus,
     SemiColon,
     // Error
     Unknown(u8),
@@ -211,6 +212,13 @@ impl Iterator for Lexer {
                 Some(Token {
                     location,
                     kind: TokenKind::Plus,
+                })
+            }
+            b'-' => {
+                self.skip1();
+                Some(Token {
+                    location,
+                    kind: TokenKind::Minus,
                 })
             }
             b';' => {
