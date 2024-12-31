@@ -1,4 +1,4 @@
-use super::{expression::Expression, Parse, ParseError, Parser};
+use super::{declaration::Declaration, expression::Expression, Parse, ParseError, Parser};
 
 use crate::lexer::{Location, TokenKind};
 
@@ -33,13 +33,19 @@ impl Parse for CompoundStatement {
 
 #[derive(Debug)]
 pub enum BlockItem {
+    Declaration(Declaration),
     UnlabeledStatement(UnlabeledStatement),
 }
 
 impl Parse for BlockItem {
     fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
-        let unlabeled_statement = UnlabeledStatement::parse(parser)?;
-        Ok(BlockItem::UnlabeledStatement(unlabeled_statement))
+        let pos = parser.lexer.current_position();
+        if let Ok(unlabeled_statement) = UnlabeledStatement::parse(parser) {
+            return Ok(BlockItem::UnlabeledStatement(unlabeled_statement));
+        }
+        parser.lexer.set_position(pos);
+        let declaration = Declaration::parse(parser)?;
+        Ok(BlockItem::Declaration(declaration))
     }
 }
 

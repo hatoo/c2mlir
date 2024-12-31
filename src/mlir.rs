@@ -1,14 +1,15 @@
 use melior::{
-    dialect::{arith, func},
+    dialect::{arith, func, memref},
     ir::{
         attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
-        r#type::FunctionType,
-        Block, Module, OperationRef, Region, Type,
+        r#type::{FunctionType, MemRefType},
+        Block, Location, Module, OperationRef, Region, Type,
     },
     Context,
 };
 
 use crate::parser::{
+    declaration::Declaration,
     expression::{AdditiveExpression, Expression, MultiplicativeExpression, PrimaryExpression},
     statement::{BlockItem, JumpStatement, UnlabeledStatement},
     Constant, FunctionDefinition,
@@ -33,10 +34,7 @@ impl AddModule for FunctionDefinition {
             {
                 let block = Block::new(&[]);
                 for item in &self.body.block_items {
-                    let BlockItem::UnlabeledStatement(UnlabeledStatement::JumpStatement(
-                        jump_statement,
-                    )) = item;
-                    jump_statement.add_block(context, &block);
+                    item.add_block(context, &block);
                 }
 
                 let region = Region::new();
@@ -150,6 +148,57 @@ impl AddBlock for AdditiveExpression {
                     v1.result(0).unwrap().into(),
                     location.mlir_location(context),
                 ))
+            }
+        }
+    }
+}
+
+impl AddBlock for Declaration {
+    fn add_block<'c, 'a>(
+        &self,
+        context: &'c Context,
+        block: &'a Block<'c>,
+    ) -> OperationRef<'c, 'a> {
+        match self {
+            Declaration::NoAttr { .. } => {
+                let index_type = Type::index(context);
+                block.append_operation(memref::alloca(
+                    context,
+                    MemRefType::new(index_type, &[], None, None),
+                    &[],
+                    &[],
+                    None,
+                    Location::unknown(context),
+                ))
+            }
+        }
+    }
+}
+
+impl AddBlock for UnlabeledStatement {
+    fn add_block<'c, 'a>(
+        &self,
+        context: &'c Context,
+        block: &'a Block<'c>,
+    ) -> OperationRef<'c, 'a> {
+        match self {
+            UnlabeledStatement::JumpStatement(jump_statement) => {
+                jump_statement.add_block(context, block)
+            }
+        }
+    }
+}
+
+impl AddBlock for BlockItem {
+    fn add_block<'c, 'a>(
+        &self,
+        context: &'c Context,
+        block: &'a Block<'c>,
+    ) -> OperationRef<'c, 'a> {
+        match self {
+            BlockItem::Declaration(declaration) => declaration.add_block(context, block),
+            BlockItem::UnlabeledStatement(unlabeled_statement) => {
+                unlabeled_statement.add_block(context, block)
             }
         }
     }

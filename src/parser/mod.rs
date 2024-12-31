@@ -4,6 +4,7 @@ use ecow::EcoString;
 use statement::CompoundStatement;
 
 use crate::lexer::{Lexer, Location, Token, TokenKind};
+pub mod declaration;
 pub mod expression;
 pub mod statement;
 
