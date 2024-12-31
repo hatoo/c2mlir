@@ -1,4 +1,3 @@
-
 use melior::{
     dialect::{
         arith, func,
@@ -165,11 +164,11 @@ impl AddBlock for Declaration {
     ) -> OperationRef<'c, 'a> {
         match self {
             Declaration::NoAttr { .. } => {
-                let usize_type = Type::parse(context, "i64").unwrap();
+                let isize_type = Type::parse(context, "i64").unwrap();
                 let index_type = Type::index(context);
                 let one = block.append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(usize_type, 1).into(),
+                    IntegerAttribute::new(isize_type, 1).into(),
                     Location::unknown(context),
                 ));
                 block.append_operation(llvm::alloca(
