@@ -3,13 +3,14 @@ use melior::{
     ir::{
         attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
         r#type::FunctionType,
-        Block, Module, OperationRef, Region, Type,
+        Block, Location, Module, OperationRef, Region, Type,
     },
     Context,
 };
 
 use crate::parser::{
-    BlockItem, Constant, Expression, FunctionDefinition, JumpStatement, UnlabeledStatement,
+    AdditiveExpression, BlockItem, Constant, Expression, FunctionDefinition, JumpStatement,
+    PrimaryExpression, UnlabeledStatement,
 };
 
 pub trait AddModule {
@@ -54,7 +55,21 @@ impl AddBlock for Expression {
         block: &'a Block<'c>,
     ) -> OperationRef<'c, 'a> {
         match self {
-            Expression::Constant {
+            Expression::AdditiveExpression(additive_expression) => {
+                additive_expression.add_block(context, block)
+            }
+        }
+    }
+}
+
+impl AddBlock for PrimaryExpression {
+    fn add_block<'c, 'a>(
+        &self,
+        context: &'c Context,
+        block: &'a Block<'c>,
+    ) -> OperationRef<'c, 'a> {
+        match self {
+            PrimaryExpression::Constant {
                 value: Constant::Integer(value),
                 location,
             } => block.append_operation(arith::constant(
@@ -62,6 +77,29 @@ impl AddBlock for Expression {
                 IntegerAttribute::new(Type::index(context), *value).into(),
                 location.mlir_location(context),
             )),
+        }
+    }
+}
+
+impl AddBlock for AdditiveExpression {
+    fn add_block<'c, 'a>(
+        &self,
+        context: &'c Context,
+        block: &'a Block<'c>,
+    ) -> OperationRef<'c, 'a> {
+        match self {
+            AdditiveExpression::PrimaryExpression(primary_expression) => {
+                primary_expression.add_block(context, block)
+            }
+            AdditiveExpression::Add { lhs, rhs } => {
+                let v0 = lhs.add_block(context, block);
+                let v1 = rhs.add_block(context, block);
+                block.append_operation(arith::addi(
+                    v0.result(0).unwrap().into(),
+                    v1.result(0).unwrap().into(),
+                    Location::unknown(context),
+                ))
+            }
         }
     }
 }

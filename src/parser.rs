@@ -18,17 +18,65 @@ pub enum Constant {
 
 #[derive(Debug)]
 pub enum Expression {
-    // primary-expression
-    Constant { value: Constant, location: Location },
+    AdditiveExpression(Box<AdditiveExpression>),
 }
 
 impl Parse for Expression {
     fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
+        let additive_expression = AdditiveExpression::parse(parser)?;
+        Ok(Expression::AdditiveExpression(Box::new(
+            additive_expression,
+        )))
+    }
+}
+
+#[derive(Debug)]
+pub enum PrimaryExpression {
+    Constant { value: Constant, location: Location },
+}
+
+impl Parse for PrimaryExpression {
+    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
         let (location, value) = parser.expect_integer()?;
-        Ok(Expression::Constant {
+        Ok(PrimaryExpression::Constant {
             value: Constant::Integer(value),
             location,
         })
+    }
+}
+
+#[derive(Debug)]
+pub enum AdditiveExpression {
+    // TODO
+    PrimaryExpression(PrimaryExpression),
+    Add {
+        lhs: Box<AdditiveExpression>,
+        rhs: Box<PrimaryExpression>,
+    },
+}
+
+impl Parse for AdditiveExpression {
+    fn parse(parser: &mut Parser) -> Result<Self, ParseError> {
+        let primary_expression = PrimaryExpression::parse(parser)?;
+        let mut lhs = AdditiveExpression::PrimaryExpression(primary_expression);
+        while {
+            let pos = parser.lexer.current_position();
+            match parser.expect(TokenKind::Plus) {
+                Ok(_) => {
+                    let rhs = PrimaryExpression::parse(parser)?;
+                    lhs = AdditiveExpression::Add {
+                        lhs: Box::new(lhs),
+                        rhs: Box::new(rhs),
+                    };
+                    true
+                }
+                Err(_) => {
+                    parser.lexer.set_position(pos);
+                    false
+                }
+            }
+        } {}
+        Ok(lhs)
     }
 }
 
