@@ -10,7 +10,8 @@ use melior::{
 
 use crate::parser::{
     expression::{AdditiveExpression, Expression, MultiplicativeExpression, PrimaryExpression},
-    BlockItem, Constant, FunctionDefinition, JumpStatement, UnlabeledStatement,
+    statement::{BlockItem, JumpStatement, UnlabeledStatement},
+    Constant, FunctionDefinition,
 };
 
 pub trait AddModule {
