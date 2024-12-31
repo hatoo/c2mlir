@@ -60,6 +60,11 @@ pub enum MultiplicativeExpression {
         rhs: Box<PrimaryExpression>,
         location: Location,
     },
+    Rem {
+        lhs: Box<MultiplicativeExpression>,
+        rhs: Box<PrimaryExpression>,
+        location: Location,
+    },
 }
 
 impl Parse for MultiplicativeExpression {
@@ -78,6 +83,14 @@ impl Parse for MultiplicativeExpression {
             } else if let Ok(t) = parser.expect(TokenKind::Slash) {
                 let rhs = PrimaryExpression::parse(parser)?;
                 lhs = MultiplicativeExpression::Div {
+                    lhs: Box::new(lhs),
+                    rhs: Box::new(rhs),
+                    location: t.location,
+                };
+                true
+            } else if let Ok(t) = parser.expect(TokenKind::Percent) {
+                let rhs = PrimaryExpression::parse(parser)?;
+                lhs = MultiplicativeExpression::Rem {
                     lhs: Box::new(lhs),
                     rhs: Box::new(rhs),
                     location: t.location,

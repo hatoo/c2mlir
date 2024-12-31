@@ -35,6 +35,7 @@ pub enum TokenKind {
     Plus,
     Minus,
     Slash,
+    Percent,
     SemiColon,
     // Error
     Unknown(u8),
@@ -235,6 +236,13 @@ impl Iterator for Lexer {
                 Some(Token {
                     location,
                     kind: TokenKind::Slash,
+                })
+            }
+            b'%' => {
+                self.skip1();
+                Some(Token {
+                    location,
+                    kind: TokenKind::Percent,
                 })
             }
             b';' => {

@@ -109,6 +109,15 @@ impl AddBlock for MultiplicativeExpression {
                     location.mlir_location(context),
                 ))
             }
+            MultiplicativeExpression::Rem { lhs, rhs, location } => {
+                let v0 = lhs.add_block(context, block);
+                let v1 = rhs.add_block(context, block);
+                block.append_operation(arith::remsi(
+                    v0.result(0).unwrap().into(),
+                    v1.result(0).unwrap().into(),
+                    location.mlir_location(context),
+                ))
+            }
         }
     }
 }
