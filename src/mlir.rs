@@ -1,9 +1,16 @@
+use std::usize;
+
 use melior::{
-    dialect::{arith, func, memref},
+    dialect::{
+        arith, func,
+        llvm::{self, AllocaOptions},
+        memref,
+    },
     ir::{
         attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
+        operation::OperationBuilder,
         r#type::{FunctionType, MemRefType},
-        Block, Location, Module, OperationRef, Region, Type,
+        Block, Location, Module, OperationRef, Region, Type, Value,
     },
     Context,
 };
@@ -161,14 +168,19 @@ impl AddBlock for Declaration {
     ) -> OperationRef<'c, 'a> {
         match self {
             Declaration::NoAttr { .. } => {
+                let usize_type = Type::parse(context, "i64").unwrap();
                 let index_type = Type::index(context);
-                block.append_operation(memref::alloca(
+                let one = block.append_operation(arith::constant(
                     context,
-                    MemRefType::new(index_type, &[], None, None),
-                    &[],
-                    &[],
-                    None,
+                    IntegerAttribute::new(usize_type, 1).into(),
                     Location::unknown(context),
+                ));
+                block.append_operation(llvm::alloca(
+                    context,
+                    one.result(0).unwrap().into(),
+                    llvm::r#type::pointer(context, 0),
+                    Location::unknown(context),
+                    AllocaOptions::default().elem_type(Some(TypeAttribute::new(index_type).into())),
                 ))
             }
         }
