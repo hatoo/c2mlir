@@ -1,16 +1,13 @@
-use std::usize;
 
 use melior::{
     dialect::{
         arith, func,
         llvm::{self, AllocaOptions},
-        memref,
     },
     ir::{
         attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
-        operation::OperationBuilder,
-        r#type::{FunctionType, MemRefType},
-        Block, Location, Module, OperationRef, Region, Type, Value,
+        r#type::FunctionType,
+        Block, Location, Module, OperationRef, Region, Type,
     },
     Context,
 };
